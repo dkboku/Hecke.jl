@@ -2732,21 +2732,6 @@ end
 #
 ################################################################################
 
-function _get_vectors_of_length(G::Union{fmpz_mat, FakeFmpqMat}, max::fmpz)
-  C = enum_ctx_from_gram(G)
-  enum_ctx_start(C, max)
-  res = Tuple{fmpz_mat, fmpz}[]
-  while enum_ctx_next(C)
-    push!(res, (deepcopy(C.x), (C.x * G * transpose(C.x))[1, 1]))
-    push!(res, (-deepcopy(C.x), (C.x * G * transpose(C.x))[1, 1]))
-  end
-  return res
-end
-
-function _get_vectors_of_length(G::ZLattice, max::fmpz)
-  return _get_vectors_of_length(FakeFmpqMat(gram_matrix(G)), max)
-end
-
 function _back_track(source_grams::Vector, target_grams::Vector, max = inf)
   n = nrows(source_grams[1])
   lengths = [source_grams[1][i, i] for i in 1:n]
@@ -2885,4 +2870,52 @@ function _morphisms(source_gram, target_gram)
     end
     return res
   end
+end
+
+function to_magma(L::HermLat)
+  return to_magma(stdout, L)
+end
+
+function to_magma(io::IO, L::HermLat)
+  E = nf(base_ring(L))
+  K = base_field(E)
+  println(io, "Qx<x> := PolynomialRing(Rationals());")
+  f = defining_polynomial(K)
+  pol = replace(string(f), "//" => "/")
+  pol = replace(pol, string(var(parent(f))) => "x")
+  println(io, "f := ", pol, ";")
+  println(io, "K<a> := NumberField(f);")
+  println(io, "Kt<t> := PolynomialRing(K);")
+  f = defining_polynomial(E)
+  pol = replace(string(f), "//" => "/")
+  pol = replace(pol, string(var(parent(f))) => "t")
+  println(io, "g := ", pol, ";")
+  println(io, "E<b> := NumberField(g);")
+  F = gram_matrix(ambient_space(L))
+  Fst = "[" * split(string([F[i, j] for i in 1:nrows(F) for j in 1:ncols(F)]), '[')[2]
+  println(io, "F := Matrix(E, ", nrows(F), ", ", ncols(F), ", ", Fst, ");")
+  pm = pseudo_matrix(L)
+  M = matrix(pm)
+  Mst = "[" * split(string([M[i, j] for i in 1:nrows(M) for j in 1:ncols(M)]), '[')[2]
+  println(io, "M := Matrix(E, ", nrows(M), ", ", ncols(M), ", ", Mst, ");")
+  println(io, "OE := MaximalOrder(E);")
+  print(io, "C := [ ")
+  for (i, I) in enumerate(coefficient_ideals(pm))
+    print(io, "ideal< OE | ")
+    bas = "[" * split(string(absolute_basis(I)), '[')[2]
+    bas = replace(bas, string(var(K)) => "a")
+    bas = replace(bas, string(var(E)) => "b")
+    bas = replace(bas, "//" => "/")
+    if i < length(coefficient_ideals(pm))
+      print(io, bas, ">, ")
+    else
+      println(io, bas, ">];")
+    end
+  end
+  println(io, "M := Module(PseudoMatrix(C, M));")
+  println(io, "L := HermitianLattice(M, F);")
+end
+
+function var(E::NfRel)
+  return E.S
 end
