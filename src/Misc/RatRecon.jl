@@ -208,7 +208,7 @@ function rational_reconstruction_mod(g::fmpq_poly, f::fmpq_poly)
   n, p = _inner_modp_results(g, f, p)  # mainly used to find the correct
                                        # bound n and a starting p 
   kp = 10  
-  L =[]
+  L = []
   pp = FlintZZ(1)
   j = 0
   while true
@@ -286,18 +286,19 @@ end
 #                         Berlekamp Massey Algorithm                           #
 ################################################################################
 function berlekamp_massey_naive(L::Array{T, 1}) where T
+    # L is list of numbers obtained from a blackbox evaluation
      R_s = parent(L[1])
-     lg = length(L)
-     L = [R_s(L[lg-i]) for i in 0:lg-1]
+     len_L = length(L) # len -> len_L
+     L = [R_s(L[len_L-i]) for i in 0:len_L-1]
      Ry, Y = PolynomialRing(R_s, "Y", cached=false)
      g = Ry(L)
      if iszero(g)
        return g
      end
-     f = Y^lg
+     f = Y^len_L
      N = R_s(inv(lead(g))); g1 = g*N
      v0 = Ry(); v1 = Ry(1)
-     while lg <= 2*degree(g1)
+     while len_L <= 2*degree(g1)
        q,r = divrem(f,g1)
        if r==0
           N = R_s(1)
@@ -335,10 +336,10 @@ function berlekamp_massey_mod(L::Array{fmpq, 1})
     else
        N, pp = induce_crt(N, pp, L[1], L[2])
     end
-    j=1
+    j = 1
     fl, nu_rat_f = induce_rational_reconstruction(N, FlintZZ(pp))
     if fl
-      if length(factor(nu_rat_f)) == degree(nu_rat_f) #TODO write and use roots
+      if length(factor(nu_rat_f)) == degree(nu_rat_f) #TO DO write and use roots
           return true,  nu_rat_f
       end
     end
